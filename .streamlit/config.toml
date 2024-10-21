@@ -1,6 +1,5 @@
 [theme]
 backgroundColor="#F5FFFA"
-secondaryBackgroundColor="#228B22"
+secondaryBackgroundColor="#FFC0CB"  # Rose clair
 textColor="#0e0f10"
 font="monospace"
-

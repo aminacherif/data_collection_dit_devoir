@@ -1,18 +1,11 @@
 import streamlit as st
 import pandas as pd
-import logging
 import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-
-# Configurer les logs pour qu'ils s'affichent dans la console avec Streamlit
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 
 # Titre de l'application
 st.markdown("<h1 style='text-align: center;'>Scraper de données : Dakar Vente</h1>", unsafe_allow_html=True)
@@ -43,7 +36,6 @@ def init_selenium():
 
 # Fonction pour scraper plusieurs pages avec Selenium
 def scrape_data_with_selenium(base_url, max_pages, category_name, file_name):
-    logging.info(f"Début du scraping des données pour {category_name}...")
     st.write(f"Scraping des données pour {category_name} sur {max_pages} pages...")
     data = []
     
@@ -52,14 +44,11 @@ def scrape_data_with_selenium(base_url, max_pages, category_name, file_name):
 
     for p in range(1, max_pages + 1):
         url = f"{base_url}&nb={p}"
-        logging.info(f"Scraping de la page {p} à l'URL : {url}")
         st.write(f"Scraping de la page {p} à l'URL : {url}")
         driver.get(url)
         time.sleep(3)
 
         articles = driver.find_elements(By.CLASS_NAME, "item-product-grid-3")
-        logging.info(f"{len(articles)} articles trouvés sur la page {p}")
-        st.write(f"{len(articles)} articles trouvés sur la page {p}")
 
         for article in articles:
             try:
@@ -75,7 +64,6 @@ def scrape_data_with_selenium(base_url, max_pages, category_name, file_name):
                     "Lien de l'image": lien_image
                 })
             except Exception as e:
-                logging.error(f"Erreur lors de l'extraction : {e}")
                 st.write(f"Erreur lors de l'extraction des informations : {e}")
 
     # Fermer Selenium
