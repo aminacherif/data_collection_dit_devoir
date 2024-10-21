@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: dit-devops-project
+    repo: https://github.com/Mx-Bx/dit-devops-project
+    branch: main
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "streamlit run ./app/data_app.py"
+    env: python

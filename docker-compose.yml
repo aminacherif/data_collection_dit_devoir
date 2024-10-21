@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  web:
+    image: barryma22/dit-devops-project:latest
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
