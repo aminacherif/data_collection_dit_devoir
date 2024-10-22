@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 
 API_KEY = "eda30bb1a85eb4974c982d6cdd33ce04"
+
 # Titre de l'application
 st.markdown("<h1 style='text-align: center;'>Scraper de données : <br> Dakar Vente</h1>", unsafe_allow_html=True)
 
@@ -23,60 +24,77 @@ def load_scraper_csv(file_path):
 
 # Fonction pour scraper des pages avec ScraperAPI
 def scrape_data_with_scraperapi(base_url, max_pages, category_name, file_name):
-    st.write(f"Scraping des données pour {category_name} sur {max_pages} pages...")
     data = []
 
     for p in range(1, max_pages + 1):
         url = f"{base_url}&nb={p}"
-        st.write(f"Scraping de la page {p} à l'URL : {url}")
-        
-        # Utilisation de ScraperAPI pour scraper la page
+        # Utilisation de ScraperAPI pour scraper la page avec un User-Agent
         response = requests.get(
             "http://api.scraperapi.com",
             params={
                 "api_key": API_KEY,
                 "url": url,
-                "render": "true"  # Activer le rendu JavaScript
+                "render": "true"
+            },
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+                "Accept-Language": "fr-SN,fr;q=0.9,en;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive"
             }
+
         )
 
+        # Afficher le contenu brut de la page pour diagnostic
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
-            articles = soup.find_all("div", class_="item-product-grid-3")
 
-            for article in articles:
-                try:
-                    detail = article.find("div", class_="content-desc").text.strip() if article.find("div", class_="content-desc") else 'N/A'
-                    prix = article.find("div", class_="content-price").text.strip() if article.find("div", class_="content-price") else 'N/A'
-                    
-                    content_prices = article.find_all("div", class_="content-price")
-                    adresse = content_prices[1].text.strip() if len(content_prices) > 1 else 'N/A'
+            # Extraire les articles à partir de la balise <article>
+            articles = soup.find_all("article", class_="item-product-grid-3")
+            if articles:
+                for article in articles:
+                    try:
 
-                    image_lien = article.find("img")["src"] if article.find("img") else 'N/A'
-                    
-                    data.append({
-                        "Détails": detail,
-                        "Prix": prix,
-                        "Adresse": adresse,
-                        "Lien de l'image": image_lien
-                    })
-                except Exception as e:
-                    st.write(f"Erreur lors de l'extraction des informations : {e}")
+                        # Extraire l'image
+                        image_lien = article.find("img")["src"] if article.find("img") else 'N/A'
+
+                        # Extraire la description
+                        description = article.find("div", class_="content-desc").text.strip() if article.find("div", class_="content-desc") else 'N/A'
+
+                        # Extraire le prix
+                        prix = article.find("div", class_="content-price").text.strip() if article.find("div", class_="content-price") else 'N/A'
+
+                        # Extraire l'adresse
+                        adresse = article.find_all("div", class_="content-price")[1].text.strip() if len(article.find_all("div", class_="content-price")) > 1 else 'N/A'
+
+                        data.append({
+                            "Détails": description,
+                            "Prix": prix,
+                            "Adresse": adresse,
+                            "Image": image_lien,
+                        })
+                    except Exception as e:
+                        st.write(f"Erreur lors de l'extraction des informations : {e}")
+            else:
+                st.warning(f"Aucun article trouvé sur la page {p}.")
         else:
             st.error(f"Erreur lors de l'accès à la page {url} (Code {response.status_code})")
 
     # Convertir les données en DataFrame et sauvegarder le fichier CSV
-    df = pd.DataFrame(data)
-    file_path = f"app/data/{file_name}"
-    df.to_csv(file_path, index=False)
-    
-    # Afficher et proposer le téléchargement
-    st.subheader(f"Aperçu des données scrappées : {category_name}")
-    st.write(f"Dimension des données : {df.shape[0]} lignes et {df.shape[1]} colonnes.")
-    st.dataframe(df)
+    if data:
+        df = pd.DataFrame(data)
+        file_path = f"app/data/{file_name}"
+        df.to_csv(file_path, index=False)
+        
+        # Afficher et proposer le téléchargement
+        st.subheader(f"Aperçu des données scrappées : {category_name}")
+        st.write(f"Dimension des données : {df.shape[0]} lignes et {df.shape[1]} colonnes.")
+        st.dataframe(df)
 
-    csv_data = df.to_csv(index=False)
-    st.download_button(label="Télécharger les données en CSV", data=csv_data, file_name=file_name, mime="text/csv")
+        csv_data = df.to_csv(index=False)
+        st.download_button(label="Télécharger les données en CSV", data=csv_data, file_name=file_name, mime="text/csv")
+    else:
+        st.warning("Aucune donnée n'a été extraite.")
 
 # Interface utilisateur
 col1, col2 = st.columns(2)

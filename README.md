@@ -10,7 +10,6 @@ Cette application **Streamlit** permet de télécharger des données extraites d
   - Scraping des données avec Selenium
   - Téléchargement des données extraites
   - Chargement des données précédemment scrappées par **Web Scraper**
-  - Formulaire d'évaluation simple intégré
 
 ## Prérequis
 
