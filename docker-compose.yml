@@ -1,12 +1,23 @@
 version: '3.8'
 
 services:
+  # Service pour votre application Streamlit
   web:
-    image: barryma22/dit-devops-project:latest
+    image: aminacherif/data_collection_dit_devoir:latest
     build: .
     ports:
-      - "8501:8501"
+      - "8501:8501"  # Exposer le port de Streamlit
     volumes:
-      - .:/app
+      - .:/app  # Monter le répertoire de l'application dans le conteneur
     environment:
       - PYTHONUNBUFFERED=1
+    depends_on:
+      - selenium  # Dépendance sur le service Selenium
+
+  # Service Selenium avec Chrome
+  selenium:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium-chrome
+    ports:
+      - "4444:4444"  # Exposer le port Selenium pour accéder à WebDriver
+    shm_size: '2gb'  # Éviter les problèmes de mémoire partagée

@@ -1,21 +1,17 @@
 import streamlit as st
 import pandas as pd
 import os
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-import time
+import requests
+from bs4 import BeautifulSoup
 
+API_KEY = "eda30bb1a85eb4974c982d6cdd33ce04"
 # Titre de l'application
-st.markdown("<h1 style='text-align: center;'>Scraper de données : Dakar Vente</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>Scraper de données : <br> Dakar Vente</h1>", unsafe_allow_html=True)
 
 # Fonction pour charger les fichiers CSV
 def load_scraper_csv(file_path):
     if os.path.exists(file_path):
         df = pd.read_csv(file_path)
-        st.subheader(f"Aperçu des données du fichier : {file_path}")
-        st.write("Ces données ont été scrappées à l'aide de Selenium.")
         st.write(f"Dimension des données : {df.shape[0]} lignes et {df.shape[1]} colonnes.")
         st.dataframe(df)
         
@@ -25,49 +21,49 @@ def load_scraper_csv(file_path):
     else:
         st.warning(f"Le fichier {file_path} n'existe pas encore. Effectuez le scraping pour générer le fichier.")
 
-# Fonction pour initialiser Selenium
-def init_selenium():
-    # Configuration de ChromeDriver
-    chrome_service = Service(ChromeDriverManager().install())
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Exécuter en mode sans interface
-    driver = webdriver.Chrome(service=chrome_service, options=options)
-    return driver
-
-# Fonction pour scraper plusieurs pages avec Selenium
-def scrape_data_with_selenium(base_url, max_pages, category_name, file_name):
+# Fonction pour scraper des pages avec ScraperAPI
+def scrape_data_with_scraperapi(base_url, max_pages, category_name, file_name):
     st.write(f"Scraping des données pour {category_name} sur {max_pages} pages...")
     data = []
-    
-    # Initialiser Selenium
-    driver = init_selenium()
 
     for p in range(1, max_pages + 1):
         url = f"{base_url}&nb={p}"
         st.write(f"Scraping de la page {p} à l'URL : {url}")
-        driver.get(url)
-        time.sleep(3)
+        
+        # Utilisation de ScraperAPI pour scraper la page
+        response = requests.get(
+            "http://api.scraperapi.com",
+            params={
+                "api_key": API_KEY,
+                "url": url,
+                "render": "true"  # Activer le rendu JavaScript
+            }
+        )
 
-        articles = driver.find_elements(By.CLASS_NAME, "item-product-grid-3")
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            articles = soup.find_all("div", class_="item-product-grid-3")
 
-        for article in articles:
-            try:
-                detail = article.find_element(By.CLASS_NAME, "content-desc").text.strip()
-                prix = article.find_element(By.CLASS_NAME, "content-price").text.strip()
-                adresse = article.find_elements(By.CLASS_NAME, "content-price")[1].text.strip()
-                lien_image = article.find_element(By.TAG_NAME, "img").get_attribute("src")
+            for article in articles:
+                try:
+                    detail = article.find("div", class_="content-desc").text.strip() if article.find("div", class_="content-desc") else 'N/A'
+                    prix = article.find("div", class_="content-price").text.strip() if article.find("div", class_="content-price") else 'N/A'
+                    
+                    content_prices = article.find_all("div", class_="content-price")
+                    adresse = content_prices[1].text.strip() if len(content_prices) > 1 else 'N/A'
 
-                data.append({
-                    "Détails": detail,
-                    "Prix": prix,
-                    "Adresse": adresse,
-                    "Lien de l'image": lien_image
-                })
-            except Exception as e:
-                st.write(f"Erreur lors de l'extraction des informations : {e}")
-
-    # Fermer Selenium
-    driver.quit()
+                    image_lien = article.find("img")["src"] if article.find("img") else 'N/A'
+                    
+                    data.append({
+                        "Détails": detail,
+                        "Prix": prix,
+                        "Adresse": adresse,
+                        "Lien de l'image": image_lien
+                    })
+                except Exception as e:
+                    st.write(f"Erreur lors de l'extraction des informations : {e}")
+        else:
+            st.error(f"Erreur lors de l'accès à la page {url} (Code {response.status_code})")
 
     # Convertir les données en DataFrame et sauvegarder le fichier CSV
     df = pd.DataFrame(data)
@@ -93,26 +89,26 @@ with col1:
     st.header("Options")
     option = st.selectbox("Choisir une option", ("Scraper les données", "Charger des données scrappées"))
 
-# Scraper les données avec Selenium
+# Scraper les données avec ScraperAPI
 if option == "Scraper les données" and page != "Sélectionner une page":
     tab1, tab2, tab3 = st.tabs(["Appartements à louer", "Appartements à vendre", "Terrains à vendre"])
 
     with tab1:
-        scrape_data_with_selenium("https://dakarvente.com/index.php?page=annonces_categorie&id=10&sort=", int(page), "Appartements à louer", "dakarvente_appartements_louer_cleaned.csv")
+        scrape_data_with_scraperapi("https://dakarvente.com/index.php?page=annonces_categorie&id=10&sort=", int(page), "Appartements à louer", "dakarvente_appartements_louer_cleaned.csv")
 
     with tab2:
-        scrape_data_with_selenium("https://dakarvente.com/index.php?page=annonces_categorie&id=61&sort=", int(page), "Appartements à vendre", "dakarvente_appartements_vendre_cleaned.csv")
+        scrape_data_with_scraperapi("https://dakarvente.com/index.php?page=annonces_categorie&id=61&sort=", int(page), "Appartements à vendre", "dakarvente_appartements_vendre_cleaned.csv")
 
     with tab3:
-        scrape_data_with_selenium("https://dakarvente.com/index.php?page=annonces_categorie&id=13&sort=", int(page), "Terrains à vendre", "dakarvente_terrains_vendre_cleaned.csv")
+        scrape_data_with_scraperapi("https://dakarvente.com/index.php?page=annonces_categorie&id=13&sort=", int(page), "Terrains à vendre", "dakarvente_terrains_vendre_cleaned.csv")
 
 # Charger des données déjà scrappées
 if option == "Charger des données scrappées":
     file_choice = st.selectbox("Choisir un fichier à charger", ["Sélectionner un fichier", "Appartements à louer", "Appartements à vendre", "Terrains à vendre"])
     files = {
-        "Appartements à louer": "app/data/dakarvente_appartements_louer_cleaned.csv",
-        "Appartements à vendre": "app/data/dakarvente_appartements_vendre_cleaned.csv",
-        "Terrains à vendre": "app/data/dakarvente_terrains_vendre_cleaned.csv"
+        "Appartements à louer": "app/data/dakarvente-logement-scraper.csv",
+        "Appartements à vendre": "app/data/dakarvente-vente-scraper.csv",
+        "Terrains à vendre": "app/data/dakarvente-terrains-scraper.csv"
     }
 
     if file_choice != "Sélectionner un fichier":
